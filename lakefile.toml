@@ -1,0 +1,10 @@
+name = "toy"
+version = "0.1.0"
+defaultTargets = ["toy"]
+
+[[lean_lib]]
+name = "Toy"
+
+[[lean_exe]]
+name = "toy"
+root = "Main"
