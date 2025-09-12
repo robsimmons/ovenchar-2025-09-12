@@ -13,6 +13,11 @@ inductive Tree where
  | node : Tree → Tree → Tree
 deriving Repr, ToJson, FromJson, Inhabited
 
+-- Serialization
+def treeToExport (t: Tree) : String :=
+  t |> ToJson.toJson |> Json.compress -- Why do both .toJson and .compress fail in this context?
+
+-- Deserialization
 def treeFromExport (s: String) : Tree :=
   match Json.parse s with
   | .error e => panic! s!"String not JSON: {e}"
@@ -20,9 +25,6 @@ def treeFromExport (s: String) : Tree :=
     match FromJson.fromJson? v with
     | .error e => panic! s!"JSON not tree: {e}"
     | .ok v' => v'
-
-def treeToExport (t: Tree) : String :=
-  t |> ToJson.toJson |> Json.compress -- Why does .compress fail in this context?
 
 def exprToEnumElem (e: Expr) : Enum :=
   match e with
@@ -39,10 +41,16 @@ def exprToTree (e: Expr) : Tree :=
   | _ => panic! s!"Expr not a Tree: {e}"
 
 elab "#tree" syn:term : term =>
+  -- David said to add this `withOptions` modifier: it is supposed to ensure that the defnDecl that
+  -- we addAndCompile will not, under any circumstanses, be partially evaluated at compile time;
+  -- this would of course defeat the purpose of doing a serialization step and make the whole thing
+  -- just a complex let-hoisting. We were not able to trigger a case where this option changed
+  -- anything, so this could be somewhat defensive.
   withOptions (·.setBool `compiler.extract_closed false) do
+    -- Generate a symbol to connect definition and mention
+    let name ← Lean.mkFreshUserName `hash_tree
     let expr ← Elab.Term.elabTerm syn (some <| Expr.const ``Tree [])
     let serializedTree := exprToTree expr |> treeToExport
-    let name ← Lean.mkFreshUserName `hash_tree
     let value ← Meta.mkAppM ``treeFromExport #[ToExpr.toExpr serializedTree]
     addAndCompile <| .defnDecl {
         name, value,
