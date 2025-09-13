@@ -1,17 +1,8 @@
 import Lean
+import Toy.Tree
 open Lean
 
-inductive Enum where
- | a
- | b
- | c
- | d
-deriving Repr, ToJson, FromJson, Inhabited
-
-inductive Tree where
- | leaf : Enum → Tree
- | node : Tree → Tree → Tree
-deriving Repr, ToJson, FromJson, Inhabited
+deriving instance ToJson, FromJson, Inhabited for Enum, Tree
 
 -- Serialization
 def treeToExport (t: Tree) : String :=
@@ -32,6 +23,7 @@ def exprToEnumElem (e: Expr) : Enum :=
   | Expr.const ``Enum.b _ => .b
   | Expr.const ``Enum.c _ => .c
   | Expr.const ``Enum.d _ => .d
+  | Expr.const ``Enum.e _ => .e
   | _ => panic! s!"Expr not an Enum: {e}"
 
 def exprToTree (e: Expr) : Tree :=
