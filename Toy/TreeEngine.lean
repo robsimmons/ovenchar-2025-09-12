@@ -2,7 +2,7 @@ import Lean
 import Toy.Tree
 open Lean
 
-deriving instance ToJson, FromJson, Inhabited for Enum, Tree
+deriving instance ToJson, FromJson for Enum, Tree
 
 -- Serialization
 def treeToExport (t: Tree) : String :=

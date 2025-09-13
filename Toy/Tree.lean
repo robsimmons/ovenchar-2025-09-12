@@ -4,9 +4,9 @@ inductive Enum where
  | c
  | d
  | e
-deriving Repr
+deriving Repr, Inhabited
 
 inductive Tree where
  | leaf : Enum → Tree
  | node : Tree → Tree → Tree
-deriving Repr
+deriving Repr, Inhabited
