@@ -1,7 +1,7 @@
 import Toy.TreeEngine
 
-def flibbet := #tree .leaf .a
+def flibbet := #tree .leaf 0
 
-def fnord := #tree .node (.leaf .a) (.node (.leaf .d) (.leaf .d))
+def fnord := #tree .node (.leaf 0) (.node (.leaf 3) (.leaf 3))
 
-def fjord := #tree .node (.node (.leaf .d) (.leaf .d)) (.leaf .c)
+def fjord := #tree .node (.node (.leaf 3) (.leaf 3)) (.leaf 2)
