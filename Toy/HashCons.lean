@@ -15,25 +15,30 @@ def getEnumRepr (elem: Enum): Int :=
    | .d => -4
    | .e => -5
 
-def getTreeRepr (t: Tree) (store: TreeTable) (map: TreeLookup): TreeRepr × TreeTable × TreeLookup :=
+structure TreeReprState : Type where
+  store : TreeTable
+  map : TreeLookup
+
+def getTreeRepr (t: Tree) : StateM TreeReprState TreeRepr := do
    match t with
    | .node t1 t2 =>
-     let (repr1, store1, map1) := getTreeRepr t1 store map
-     let (repr2, store2, map2) := getTreeRepr t2 store1 map1
-     match Std.HashMap.get? map2 (repr1, repr2) with
-     | .some repr => (repr, store2, map2)
+     let repr1 ← getTreeRepr t1
+     let repr2 ← getTreeRepr t2
+     match Std.HashMap.get? (← get).map (repr1, repr2) with
+     | .some repr => pure repr
      | .none =>
        -- Create new binding
-       let newRepr := Array.size store2 |> Int.ofNat
-       let newStore := Array.append store2 #[repr1, repr2]
-       let newMap := Std.HashMap.insert map2 (repr1, repr2) newRepr
-       (newRepr, newStore, newMap)
-   | .leaf elem =>
-     (getEnumRepr elem, store, map)
+       let newRepr := Array.size (← get).store |> Int.ofNat
+       modify (fun st => {st with
+          store := Array.append st.store #[repr1, repr2]
+          map := Std.HashMap.insert (st.map) (repr1, repr2) newRepr
+       })
+       pure newRepr
+   | .leaf elem => pure (getEnumRepr elem)
 
 def compressTree (t: Tree): TreeTable × TreeRepr :=
-   let (repr, table, _) := getTreeRepr t #[] Std.HashMap.emptyWithCapacity
-   (table, repr)
+   let (repr, s) := getTreeRepr t |>.run { store := #[], map := Std.HashMap.emptyWithCapacity }
+   (s.store, repr)
 
 -- Note: this decompression will not result in efficient in-memory representations
 partial def decompressTree (store: TreeTable) (repr: TreeRepr): Tree :=
