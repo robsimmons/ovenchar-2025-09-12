@@ -1,5 +1,7 @@
 import Lean
 import Toy.Tree
+import Toy.HashCons
+import Std.Data.TreeMap
 open Lean
 
 deriving instance ToJson, FromJson for Enum, Tree
@@ -32,6 +34,22 @@ def exprToTree (e: Expr) : Tree :=
   | Expr.app (Expr.app (Expr.const ``Tree.node _) el) er => .node (exprToTree el) (exprToTree er)
   | _ => panic! s!"Expr not a Tree: {e}"
 
+def treeToCompressedExport (t: Tree) : String :=
+  let (store, repr) := compressTree t
+  (Json.mkObj [("key", ToJson.toJson repr), ("table", ToJson.toJson store)]) |> Json.compress
+
+def treeFromCompressedExport (s: String) : Tree :=
+  let tree : Except String Tree := do
+    let v ← Json.parse s |> .mapError (s!"String not JSON: {·}")
+    let vstore ← Json.getObjVal? v "table" |> .mapError (s!"No table in JSON: {·}")
+    let vkey ← Json.getObjVal? v "key" |> .mapError (s!"No key in JSON: {·}")
+    let store ← FromJson.fromJson? vstore |> .mapError (s!"Store not array: {·}")
+    let key ← FromJson.fromJson? vkey |> .mapError (s!"Store not array: {·}")
+    return decompressTree store key
+  match tree with
+  | .ok t => t
+  | .error s => panic! s
+
 elab "#tree" syn:term : term =>
   -- David said to add this `withOptions` modifier: it is supposed to ensure that the defnDecl that
   -- we addAndCompile will not, under any circumstanses, be partially evaluated at compile time;
@@ -42,8 +60,8 @@ elab "#tree" syn:term : term =>
     -- Generate a symbol to connect definition and mention
     let name ← Lean.mkFreshUserName `hash_tree
     let expr ← Elab.Term.elabTerm syn (some <| Expr.const ``Tree [])
-    let serializedTree := exprToTree expr |> treeToExport
-    let value ← Meta.mkAppM ``treeFromExport #[ToExpr.toExpr serializedTree]
+    let serializedTree := exprToTree expr |> treeToCompressedExport
+    let value ← Meta.mkAppM ``treeFromCompressedExport #[ToExpr.toExpr serializedTree]
     addAndCompile <| .defnDecl {
         name, value,
         type := .const ``Tree [],
