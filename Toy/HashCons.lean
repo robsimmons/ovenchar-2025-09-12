@@ -2,18 +2,10 @@ import Std
 import Std.Data.HashMap
 import Toy.Tree
 
-
 abbrev TreeRepr := Int
 abbrev TreeTable := Array TreeRepr
 abbrev TreeLookup := Std.HashMap (TreeRepr × TreeRepr) TreeRepr
 
-def getEnumRepr (elem: Enum): Int :=
-   match elem with
-   | .a => -1
-   | .b => -2
-   | .c => -3
-   | .d => -4
-   | .e => -5
 
 structure TreeReprState : Type where
   store : TreeTable
@@ -34,7 +26,7 @@ def getTreeRepr (t: Tree) : StateM TreeReprState TreeRepr := do
           map := Std.HashMap.insert (st.map) (repr1, repr2) newRepr
        })
        pure newRepr
-   | .leaf elem => pure (getEnumRepr elem)
+   | .leaf elem => pure (-(Int.ofNat (elem + 1)))
 
 def compressTree (t: Tree): TreeTable × TreeRepr :=
    let (repr, s) := getTreeRepr t |>.run { store := #[], map := Std.HashMap.emptyWithCapacity }
@@ -42,12 +34,8 @@ def compressTree (t: Tree): TreeTable × TreeRepr :=
 
 -- Note: this decompression will not result in efficient in-memory representations
 partial def decompressTree (store: TreeTable) (repr: TreeRepr): Tree :=
-  match repr with
-  | -1 => .leaf .a
-  | -2 => .leaf .b
-  | -3 => .leaf .c
-  | -4 => .leaf .d
-  | -5 => .leaf .e
+  match Int.toNat? (-(repr + 1)) with
+  | .some elem => .leaf elem
   | _ =>
     match Int.toNat? repr with
     | .none => panic! s!"invalid repr {repr}"
@@ -58,6 +46,6 @@ partial def decompressTree (store: TreeTable) (repr: TreeRepr): Tree :=
 
 #eval compressTree (.node
   (.node
-    (.node (.node (.leaf .d) (.leaf .d)) (.node (.leaf .d) (.leaf .d)))
-    (.node (.node (.leaf .d) (.leaf .d)) (.node (.leaf .d) (.leaf .a))))
-  (.node (.leaf .d) (.leaf .a)))
+    (.node (.node (.leaf 3) (.leaf 3)) (.node (.leaf 3) (.leaf 3)))
+    (.node (.node (.leaf 3) (.leaf 3)) (.node (.leaf 3) (.leaf 0))))
+  (.node (.leaf 3) (.leaf 0)))

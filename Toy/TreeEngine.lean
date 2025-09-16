@@ -4,7 +4,7 @@ import Toy.HashCons
 import Std.Data.TreeMap
 open Lean
 
-deriving instance ToJson, FromJson for Enum, Tree
+deriving instance ToJson, FromJson for Tree
 
 -- Serialization
 def treeToExport (t: Tree) : String :=
@@ -19,18 +19,12 @@ def treeFromExport (s: String) : Tree :=
     | .error e => panic! s!"JSON not tree: {e}"
     | .ok v' => v'
 
-def exprToEnumElem (e: Expr) : Enum :=
-  match e with
-  | Expr.const ``Enum.a _ => .a
-  | Expr.const ``Enum.b _ => .b
-  | Expr.const ``Enum.c _ => .c
-  | Expr.const ``Enum.d _ => .d
-  | Expr.const ``Enum.e _ => .e
-  | _ => panic! s!"Expr not an Enum: {e}"
-
 def exprToTree (e: Expr) : Tree :=
   match e with
-  | Expr.app (Expr.const ``Tree.leaf _) enumElem => .leaf (exprToEnumElem enumElem)
+  | -- Not sure this case is possible
+    Expr.app (Expr.const ``Tree.leaf _) (.lit (.natVal elem)) => .leaf elem
+  | -- This seems to be what comes up in practice
+    Expr.app (Expr.const ``Tree.leaf _) (.app (.app (.app (.const ``OfNat.ofNat _) _) (.lit (.natVal elem))) _) => .leaf elem
   | Expr.app (Expr.app (Expr.const ``Tree.node _) el) er => .node (exprToTree el) (exprToTree er)
   | _ => panic! s!"Expr not a Tree: {e}"
 
