@@ -39,21 +39,16 @@ def treeToCompressedExport (t: Tree) : String :=
   (Json.mkObj [("key", ToJson.toJson repr), ("table", ToJson.toJson store)]) |> Json.compress
 
 def treeFromCompressedExport (s: String) : Tree :=
-  match Json.parse s with
-  | .error e => panic! s!"String not JSON: {e}"
-  | .ok v =>
-    match Json.getObjVal? v "table" with
-    | .error e => panic! s!"No table in JSON: {e}"
-    | .ok vstore =>
-      match Json.getObjVal? v "key" with
-      | .error e => panic! s!"No key in JSON: {e}"
-      | .ok vkey =>
-        match FromJson.fromJson? vstore with
-        | .error e => panic! s!"Store not array: {e}"
-        | .ok store =>
-          match FromJson.fromJson? vkey with
-          | .error e => panic! s!"Key not int: {e}"
-          | .ok key => decompressTree store key
+  let tree : Except String Tree := do
+    let v ← Json.parse s |> .mapError (s!"String not JSON: {·}")
+    let vstore ← Json.getObjVal? v "table" |> .mapError (s!"No table in JSON: {·}")
+    let vkey ← Json.getObjVal? v "key" |> .mapError (s!"No key in JSON: {·}")
+    let store ← FromJson.fromJson? vstore |> .mapError (s!"Store not array: {·}")
+    let key ← FromJson.fromJson? vkey |> .mapError (s!"Store not array: {·}")
+    return decompressTree store key
+  match tree with
+  | .ok t => t
+  | .error s => panic! s
 
 elab "#tree" syn:term : term =>
   -- David said to add this `withOptions` modifier: it is supposed to ensure that the defnDecl that
